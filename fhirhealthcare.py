@@ -1,22 +1,66 @@
-import os
 import json
-import requests
-
-
-from google.oauth2 import service_account
-# Imports the Google API Discovery Service.
 from googleapiclient import discovery
-
-from apache_beam.options.pipeline_options import PipelineOptions
-from apache_beam import DoFn
-
-# Imports the types Dict and Any for runtime type hints.
 from typing import Any, Dict 
 
-class PatientResource:
+
+class FhirHealtCareApi:
     def __init__(self) -> None:
         pass
 
+    def execute_bundle(project_id, location, dataset_id, fhir_store_id, bundle):
+
+        """Executes the operations in the given bundle.
+
+        See https://github.com/GoogleCloudPlatform/python-docs-samples/tree/main/healthcare/api-client/v1/fhir
+        before running the sample."""
+        # Imports Python's built-in "os" module
+        import os
+
+        # Imports the google.auth.transport.requests transport
+        from google.auth.transport import requests
+
+        # Imports a module to allow authentication using a service account
+        from google.oauth2 import service_account
+
+        # Gets credentials from the environment.
+        credentials = service_account.Credentials.from_service_account_file(
+            "c:\\Users\\srava\Projects\\application_default_credentials.json"
+        )
+        scoped_credentials = credentials.with_scopes(
+            ["https://www.googleapis.com/auth/cloud-platform"]
+        )
+        # Creates a requests Session object with the credentials.
+        session = requests.AuthorizedSession(scoped_credentials)
+
+        # URL to the Cloud Healthcare API endpoint and version
+        base_url = "https://healthcare.googleapis.com/v1"
+
+        url = f"{base_url}/projects/{project_id}/locations/{location}"
+
+        resource_path = "{}/datasets/{}/fhirStores/{}/fhir".format(
+            url, dataset_id, fhir_store_id
+        )
+
+        headers = {"Content-Type": "application/fhir+json;charset=utf-8"}
+
+        # with open(bundle) as bundle_file:
+        #     bundle_file_content = bundle_file.read()
+
+        bundle_file_content = json.dumps(bundle)
+        
+        try:
+            response = session.post(resource_path, headers=headers, data=bundle_file_content)
+            if response.status_code != 200:
+                print(f'res: {response.text}')
+                raise Exception(response.text)
+            resource = response.json()
+            print(json.dumps(resource, indent=2))
+            print('created bundle')
+            return resource
+        except Exception as e:
+            # print(f"Error making GET request: {e.args}")
+             print(f"Error making GET request: {e.args}")
+    
     def update_resource(resource_id: str,patient_body: any) -> Dict[str, Any]:
         """Updates the entire contents of a FHIR resource.
 
@@ -54,7 +98,7 @@ class PatientResource:
         dataset_id = 'pehrdataset' # 'persondataset_1'
         fhir_store_id = 'pehrfiresore1' # 'my-fhir-store-1'
         resource_type = 'Patient'
-        # resource_id = 'b682d-0e-4843-a4a9-78c9ac64'
+        resource_id = 'b682d-0e-4843-a4a9-78c9ac64'
         fhir_store_parent = (
             f"projects/{project_id}/locations/{location}/datasets/{dataset_id}"
         )
@@ -163,74 +207,3 @@ class PatientResource:
             print(f"Unexpected Error: {e.args}")
 
     
-
-    if __name__ == "__main__":
-        print('test from fhir patient resource')
-        #     print( create_patient_resource({
-        #     "name": [{"use": "official", "family": "Smith", "given": ["Darcy"]}],
-        #     "gender": "female",
-        #     "birthDate": "1970-01-01",
-        #     "resourceType": "Patient",
-        # }) )
-        print( create_patient_resource({
-                "resourceType": "Condition",
-                "clinicalStatus": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/condition-clinical",                           
-                            "code": "active",
-                            "display": "Active"
-                        }
-                    ],
-                    "text": "Active"
-                },
-                "verificationStatus": {
-                    "coding": [
-                        {
-                            "system": "http://terminology.hl7.org/CodeSystem/condition-ver-status",
-                            "version": "4.0.0",
-                            "code": "confirmed",
-                            "display": "Confirmed"
-                        }
-                    ],
-                    "text": "Confirmed"
-                },
-                "category": [
-                    {
-                        "coding": [
-                            {
-                                "system": "http://terminology.hl7.org/CodeSystem/condition-category",
-                                "code": "problem-list-item",
-                                "display": "Problem List Item"
-                            }
-                        ],
-                        "text": "Problem List Item"
-                    }
-                ],
-                "severity": {
-                    "text": "Medium"
-                },
-                "code": {
-                    "coding": [
-                        {
-                            "system": "http://hl7.org/fhir/sid/icd-10-cm",
-                            "code": "E28.2"
-                        },
-                        {
-                            "system": "http://snomed.info/sct",
-                            "code": "69878008"
-                        }
-                    ],
-                    "text": "Polycystic ovaries"
-                },
-                "subject": {
-                    "reference": "Patient/f51f1e6f-73e7-4c0d-8e8e-07383e3bd9ed",
-                    "display": "Lopez, Camila Maria"
-                },
-                "onsetPeriod": {
-                    "start": "2005-09-20",
-                    "end": "2005-09-20"
-                },
-                "recordedDate": "2019-05-28"
-            }) )
-
